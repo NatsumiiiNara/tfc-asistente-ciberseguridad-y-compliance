@@ -1,0 +1,432 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "6ed65f6a-30b3-45d0-a187-4045c79a76dc",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        -64
+      ],
+      "webhookId": "phishguard-chat"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.chatInput }}",
+        "options": {
+          "systemMessage": "Eres PhishGuard AI, asistente experto en ciberseguridad y compliance para MIDTECH S.A.\n\nTienes acceso a la Política PSI-MIDTECH-2025-v2.1 y a las normativas GDPR, ISO 27001 y ENS.\n\nPOLÍTICA MIDTECH:\nSec.3.2: Contraseña 8 chars mín, cambio 180 días, historial 5. SIN MFA (en evaluación presupuestaria).\nSec.4: CPD Zaragoza con tarjeta. LIMITACIÓN: Madrid y Barcelona sin CPD equivalente.\nSec.5: Inventario hardware/software. LIMITACIÓN: Sin SaaS ni clasificación por criticidad.\nSec.6.1: AES-256 en BBDD producción. BitLocker portátiles.\nSec.6.2: LIMITACIÓN: Sin política cifrado en tránsito. Sin TLS 1.2+.\nSec.7: Proceso incidentes 5 pasos. LIMITACIÓN: Sin severidad, sin 72h GDPR, sin CSIRT.\nSec.8: Backup diario+semanal. LIMITACIÓN: Sin BCP/DRP, sin offsite, sin pruebas restauración.\nSec.9: LIMITACIÓN: Sin evaluación proveedores.\nSec.10: Solo ciberseguridad. LIMITACIÓN: Sin privacidad, sin compliance en contratos.\n\nCAPACIDADES:\n1. ANÁLISIS DE PHISHING: Cuando el usuario pegue un email sospechoso, analízalo e indica: nivel de riesgo (ALTO/MEDIO/BAJO), indicadores encontrados, recomendación de acción.\n2. CONSULTA DE POLÍTICA: Responde preguntas sobre GDPR, ISO 27001, ENS, contraseñas, backups, cifrado, etc. basándote en la política PSI-MIDTECH-2025-v2.1.\n3. RESPUESTA GUIADA A INCIDENTE: Si el usuario reporta un incidente, guíale paso a paso según Sec.7 (5 pasos: Detección, Contención, Erradicación, Recuperación, Lecciones aprendidas).\n4. REPORTE DE INCIDENTE: Cuando el usuario confirme que quiere generar un reporte formal, extrae la información del incidente y responde ÚNICAMENTE con un JSON con este formato exacto (sin texto adicional):\n{\n  \"ACTION\": \"CREAR_REPORTE\",\n  \"titulo\": \"título del incidente\",\n  \"fecha\": \"fecha en formato YYYY-MM-DD\",\n  \"severidad\": \"CRÍTICA|ALTA|MEDIA|BAJA\",\n  \"descripcion\": \"descripción detallada\",\n  \"pasos_seguidos\": \"pasos que se han tomado\",\n  \"recomendaciones\": \"recomendaciones finales\"\n}\n\nSiempre sé claro, conciso y profesional. Indica las limitaciones de la política cuando sean relevantes."
+        }
+      },
+      "id": "b413880f-50f0-4cf9-bcb8-e619d3c3dabb",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -336,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 4096,
+          "temperature": 0.2
+        }
+      },
+      "id": "ba0e413e-508d-425d-900c-a3ba308b7652",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        320
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "O2wySr7g4UWlag0r",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.sessionId ?? 'chatgpt-session' }}"
+      },
+      "id": "3c8e1289-e415-4e0d-82d3-a25e393e599c",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -208,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "check-reporte",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "CREAR_REPORTE",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ebb3d729-6eea-4914-b153-ed79201479c9",
+      "name": "¿Crear Reporte?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        16,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error('No se encontró JSON en la respuesta del agente');\nconst data = JSON.parse(match[0]);\nconst fecha = data.fecha || new Date().toISOString().split('T')[0];\nconst filename = `incidente_${fecha}_${data.titulo.replace(/\\s+/g, '_').toLowerCase().substring(0,30)}.md`;\nconst contenido = `# Reporte de Incidente: ${data.titulo}\\n\\n**Fecha:** ${fecha}\\n**Severidad:** ${data.severidad}\\n\\n## Descripción\\n${data.descripcion}\\n\\n## Pasos Seguidos\\n${data.pasos_seguidos}\\n\\n## Recomendaciones\\n${data.recomendaciones}\\n\\n---\\n*Generado por PhishGuard AI — MIDTECH S.A.*`;\nconst base64 = Buffer.from(contenido).toString('base64');\nreturn [{ json: { filename, contenido, base64, titulo: data.titulo, fecha, severidad: data.severidad } }];"
+      },
+      "id": "48d2d7a0-5ebe-431b-bf67-6e6648d56769",
+      "name": "Preparar Reporte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/NatsumiiiNara/tfc-asistente-ciberseguridad-y-compliance/contents/reportes/{{ $json.filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "=feat: reporte incidente {{ $json.titulo }} ({{ $json.fecha }})"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.base64 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "741f9fbf-f5ef-4650-8a61-83e0eb0f6601",
+      "name": "Subir a GitHub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "j5reRUPkFoIFL1Mv",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const github = $input.first().json;\nconst filename = $('Preparar Reporte').first().json.filename;\nconst url = github.content?.html_url || 'https://github.com/NatsumiiiNara/tfc-asistente-ciberseguridad-y-compliance/tree/main/reportes';\nreturn [{ json: { output: `✅ Reporte generado y subido a GitHub correctamente.\\n\\n📄 **Archivo:** ${filename}\\n🔗 **Ver reporte:** ${url}` } }];"
+      },
+      "id": "62acc580-fff7-43ef-83b4-862200946ae0",
+      "name": "Mensaje Éxito",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { output: $input.first().json.output } }];"
+      },
+      "id": "0aad2b8c-10b2-4892-b36c-66be01b9369d",
+      "name": "Respuesta Normal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "08d2c827-2117-462d-a93f-04b5c97873d8",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        912,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"output\": \"{{ $json.output }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        96
+      ],
+      "id": "48b76ada-2453-4de9-81e4-938048a936f7",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "phishguard-api",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        96
+      ],
+      "id": "fadb395a-ab9a-41cc-9bdb-21336821163d",
+      "name": "Webhook",
+      "webhookId": "0ded1937-3094-49cf-b3bb-5ee87db63e86"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "adacoronado02.app.n8n.cloud",
+            "user-agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+            "content-length": "204",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "68.221.67.168",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "ES",
+            "cf-ray": "a06f77a90f1f783f-MAD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "openai-conversation-id": "09a039cd-b4ee-5aaf-9ff6-093b2e2fd224",
+            "openai-ephemeral-user-id": "7d15d936-3baf-5845-90a3-f4b67c5cc003",
+            "openai-gpt-id": "g-6a21aecbc68881918bf7ed687d8063ec",
+            "traceparent": "00-9875746b802901ff87c7865c4ee83e10-8ee4ab69fe0e99fa-00",
+            "tracestate": "dd=p:d218834d5704afd2;s:-1;t.dm:-3;t.tid:6a22cccb00000000",
+            "x-datadog-parent-id": "15138994515601567698",
+            "x-datadog-sampling-priority": "-1",
+            "x-datadog-tags": "_dd.p.tid=6a22cccb00000000,_dd.p.dm=-3",
+            "x-datadog-trace-id": "15426669216749256975",
+            "x-forwarded-for": "68.221.67.168, 104.22.23.6",
+            "x-forwarded-host": "adacoronado02.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-swc-5-76c9d77478-ltfv5",
+            "x-is-trusted": "yes",
+            "x-real-ip": "68.221.67.168",
+            "x-request-id": "bac4fb84-47fb-49cc-b336-eb35647f4f2d/3uq8"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "chatInput": "\r\n\r\nAnaliza este email: Estimado usuario, su cuenta ha sido suspendida. Haga clic en http://micr0soft-login.com/verify para reactivarla urgentemente o perderá acceso en 24 horas."
+          },
+          "webhookUrl": "https://adacoronado02.app.n8n.cloud/webhook/phishguard-api",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "¿Crear Reporte?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Crear Reporte?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Reporte",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta Normal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Reporte": {
+      "main": [
+        [
+          {
+            "node": "Subir a GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a GitHub": {
+      "main": [
+        [
+          {
+            "node": "Mensaje Éxito",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje Éxito": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Normal": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "849db35b-754a-4c91-bfd7-eac0d769b001",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "37e82ee48bb9f219a3584340b1520fcff5cfb0a2b4ac286df2f7193c44537396"
+  },
+  "id": "dvqjJBhaArk9GQ02",
+  "tags": []
+}
