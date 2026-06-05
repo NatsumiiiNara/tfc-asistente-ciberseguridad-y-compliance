@@ -7,7 +7,7 @@ Asistente conversacional de ciberseguridad y compliance para MIDTECH S.A.
 Analiza la política PSI-MIDTECH-2025-v2.1 frente a GDPR, ISO 27001 y ENS.
 
 ## Demo en vivo
-🔗 https://chatgpt.com/share/6a1d2634-0e94-83eb-b266-b8adec9f6e34
+🔗 https://chatgpt.com/g/g-6a21aecbc68881918bf7ed687d8063ec-phishguard-ai-midtech
 
 ## Capacidades
 1. Análisis de políticas de seguridad
