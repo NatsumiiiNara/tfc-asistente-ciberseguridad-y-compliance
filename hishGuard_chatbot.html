@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard AI — MIDTECH S.A.</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --surface: #0a1520;
+    --surface2: #0f1e2d;
+    --border: #1a3a5c;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --danger: #ff3b5c;
+    --warn: #ffaa00;
+    --text: #c8e0f0;
+    --text-dim: #4a7a9b;
+    --glow: rgba(0, 212, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scan line effect */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 200%;
+    background: linear-gradient(transparent 50%, rgba(0,212,255,0.015) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 0;
+    animation: scanlines 0.1s steps(1) infinite;
+  }
+
+  @keyframes scanlines {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(4px); }
+  }
+
+  /* Header */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 14px 28px;
+    background: rgba(10, 21, 32, 0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 12px rgba(0,212,255,0.3), inset 0 0 8px rgba(0,212,255,0.05);
+    animation: pulse-border 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 12px rgba(0,212,255,0.3), inset 0 0 8px rgba(0,212,255,0.05); }
+    50% { box-shadow: 0 0 20px rgba(0,212,255,0.5), inset 0 0 12px rgba(0,212,255,0.1); }
+  }
+
+  .logo-text h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .logo-text span {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: blink 1.5s ease-in-out infinite;
+    box-shadow: 0 0 6px var(--accent2);
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .midtech-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+
+  /* Capabilities bar */
+  .capabilities {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cap {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    cursor: default;
+    transition: all 0.2s;
+  }
+
+  .cap:hover {
+    background: var(--surface2);
+    color: var(--accent);
+  }
+
+  .cap-icon { font-size: 14px; }
+
+  /* Main chat area */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 5;
+    overflow: hidden;
+  }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Welcome message */
+  .welcome {
+    text-align: center;
+    padding: 32px 20px;
+    animation: fadeIn 0.8s ease;
+  }
+
+  .welcome-shield {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+    filter: drop-shadow(0 0 12px rgba(0,212,255,0.4));
+  }
+
+  .welcome h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+
+  .welcome p {
+    color: var(--text-dim);
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    margin-bottom: 24px;
+  }
+
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .quick-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+    box-shadow: 0 0 8px rgba(0,212,255,0.15);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Messages */
+  .message {
+    display: flex;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+    max-width: 85%;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .message.bot {
+    align-self: flex-start;
+  }
+
+  .msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .bot .msg-avatar {
+    background: rgba(0,212,255,0.1);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  }
+
+  .user .msg-avatar {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid var(--accent2);
+  }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+    position: relative;
+  }
+
+  .bot .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    color: var(--text);
+  }
+
+  .user .msg-bubble {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.25);
+    border-right: 2px solid var(--accent2);
+    color: var(--text);
+  }
+
+  .msg-bubble strong { color: var(--accent); }
+  .msg-bubble code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    background: rgba(0,212,255,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  /* Risk indicators */
+  .risk-alto { color: var(--danger); font-weight: 700; }
+  .risk-medio { color: var(--warn); font-weight: 700; }
+  .risk-bajo { color: var(--accent2); font-weight: 700; }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: 6px;
+    width: fit-content;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typing 1.2s ease-in-out infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  .typing-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* Input area */
+  footer {
+    position: relative;
+    z-index: 10;
+    padding: 16px 28px 20px;
+    background: rgba(10, 21, 32, 0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  .input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-wrapper:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0,212,255,0.15);
+  }
+
+  #input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    resize: none;
+    min-height: 22px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--text-dim); }
+
+  #send-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  #send-btn:hover {
+    background: #00b8e0;
+    box-shadow: 0 0 12px rgba(0,212,255,0.4);
+  }
+
+  #send-btn:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .footer-hint {
+    margin-top: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
+
+  /* Corner decorations */
+  .corner {
+    position: fixed;
+    width: 40px;
+    height: 40px;
+    z-index: 1;
+    opacity: 0.3;
+  }
+  .corner-tl { top: 0; left: 0; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner-tr { top: 0; right: 0; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .corner-bl { bottom: 0; left: 0; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner-br { bottom: 0; right: 0; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div class="logo-text">
+      <h1>PhishGuard AI</h1>
+      <span>SISTEMA DE CIBERSEGURIDAD Y COMPLIANCE</span>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      SISTEMA ACTIVO
+    </div>
+    <div class="midtech-badge">MIDTECH S.A. · PSI-2025-v2.1</div>
+  </div>
+</header>
+
+<div class="capabilities">
+  <div class="cap"><span class="cap-icon">🔍</span>ANÁLISIS PHISHING</div>
+  <div class="cap"><span class="cap-icon">📋</span>CONSULTA POLÍTICA</div>
+  <div class="cap"><span class="cap-icon">🚨</span>GESTIÓN INCIDENTES</div>
+  <div class="cap"><span class="cap-icon">📁</span>REPORTE GITHUB</div>
+</div>
+
+<main>
+  <div id="messages">
+    <div class="welcome">
+      <span class="welcome-shield">🛡️</span>
+      <h2>PHISHGUARD AI</h2>
+      <p>Asistente de Ciberseguridad y Compliance · MIDTECH S.A.<br>Política PSI-MIDTECH-2025-v2.1 · GDPR · ISO 27001 · ENS</p>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="sendQuick('Analiza este email sospechoso: ')">🔍 Analizar email</button>
+        <button class="quick-btn" onclick="sendQuick('¿Cuál es la política de contraseñas de MIDTECH?')">🔑 Política contraseñas</button>
+        <button class="quick-btn" onclick="sendQuick('He detectado un posible incidente de seguridad')">🚨 Reportar incidente</button>
+        <button class="quick-btn" onclick="sendQuick('¿Qué dice la normativa GDPR sobre notificación de brechas?')">📋 Consulta GDPR</button>
+        <button class="quick-btn" onclick="sendQuick('¿Cómo está MIDTECH respecto a ISO 27001?')">✅ Estado compliance</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="input-wrapper">
+    <textarea id="input" placeholder="Escribe tu consulta de seguridad... (pega un email sospechoso, reporta un incidente, consulta la política...)" rows="1"></textarea>
+    <button id="send-btn" onclick="sendMessage()">➤</button>
+  </div>
+  <div class="footer-hint">ENTER para enviar · SHIFT+ENTER nueva línea · TFC #include13 · Fundación GoodJob · 2026</div>
+</footer>
+
+<script>
+  const WEBHOOK = 'https://adacoronado02.app.n8n.cloud/webhook/phishguard-chat/chat';
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send-btn');
+  let sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+  let isLoading = false;
+
+  // Auto-resize textarea
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  // Enter to send
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  function sendQuick(text) {
+    inputEl.value = text;
+    inputEl.focus();
+    if (!text.endsWith(' ')) sendMessage();
+  }
+
+  function addMessage(text, role) {
+    const welcome = messagesEl.querySelector('.welcome');
+    if (welcome) welcome.remove();
+
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.textContent = role === 'bot' ? '🛡️' : '👤';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = formatMessage(text);
+
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function formatMessage(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/ALTO/g, '<span class="risk-alto">ALTO</span>')
+      .replace(/MEDIO/g, '<span class="risk-medio">MEDIO</span>')
+      .replace(/BAJO/g, '<span class="risk-bajo">BAJO</span>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function showTyping() {
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = 'typing';
+    div.innerHTML = `
+      <div class="msg-avatar">🛡️</div>
+      <div class="typing">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+        <span class="typing-label">ANALIZANDO...</span>
+      </div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || isLoading) return;
+
+    isLoading = true;
+    sendBtn.disabled = true;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+
+    addMessage(text, 'user');
+    showTyping();
+
+    try {
+      const res = await fetch(WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatInput: text, sessionId })
+      });
+
+      const data = await res.json();
+      removeTyping();
+
+      const output = data.output || data.text || data.message || data.response ||
+        (Array.isArray(data) && (data[0]?.output || data[0]?.text)) ||
+        'Respuesta recibida correctamente.';
+
+      addMessage(output, 'bot');
+    } catch (err) {
+      removeTyping();
+      addMessage('⚠️ Error de conexión con PhishGuard AI. Verifica que el workflow esté publicado en n8n.', 'bot');
+    }
+
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+</script>
+</body>
+</html>
